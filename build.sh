@@ -188,7 +188,7 @@ EOF
     ninja install
 ) }
 
-for FRAMEWORK in extra-cmake-modules kconfig kguiaddons ki18n kitemviews sonnet kwindowsystem kwidgetsaddons kcompletion kdbusaddons karchive kcoreaddons kjobwidgets kcrash kservice kcodecs kauth kconfigwidgets kiconthemes ktextwidgets  kglobalaccel kxmlgui kbookmarks solid kio kparts kitemmodels threadweaver attica knewstuff ktexteditor kpackage kdeclarative kcmutils knotifications knotifyconfig libkomparediff2 kdoctools kinit ksysguard ; do
+for FRAMEWORK in extra-cmake-modules kconfig kguiaddons ki18n kitemviews sonnet kwindowsystem kwidgetsaddons kcompletion kdbusaddons karchive kcoreaddons kjobwidgets kcrash kservice kcodecs kauth kconfigwidgets kiconthemes ktextwidgets  kglobalaccel kxmlgui kbookmarks solid kio kparts kitemmodels threadweaver attica knewstuff ktexteditor kdoctools kpackage kdeclarative kcmutils knotifications knotifyconfig libkomparediff2 kinit ; do
   build_framework $FRAMEWORK
 done
 build_framework breeze-icons -DBINARY_ICONS_RESOURCE=1
