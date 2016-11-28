@@ -20,8 +20,10 @@ set -x
 
 git_pull_rebase_helper()
 {
-        git reset --hard
-        git pull --rebase
+    git fetch --tags
+    git stash || true
+    git pull --rebase
+    git stash pop || true
 }
 
 export TOPDIR=$(pwd)
@@ -29,16 +31,23 @@ export TOPDIR=$(pwd)
 export PARALLEL_JOBS=4
 export CMAKE_GENERATOR=-GNinja
 
-#FIXME
-#QTVERSION=5.7.0
-#QVERSION_SHORT=5.7
-#QTDIR=/usr/local/Qt-${QTVERSION}/
+KDEVELOP_VERSION=v5.0.3
+KDEV_PG_QT_VERSION=v2.0.0
+KF5_VERSION=v5.27.0
+KDE_APPLICATION_VERSION=v16.08.0
+GRANTLEE_VERSION=v5.1.0
+
+# QT version to use
+QTDIR=~/Qt/5.7/gcc_64/
+QT_CMAKE_DIR=$QTDIR/lib/cmake/
+QT_QMAKE_CMD=$QTDIR/bin/qmake
+export QT_QMAKE_EXECUTABLE=QT_QMAKE_CMD
 
 # qjsonparser, used to add metadata to the plugins needs to work in a en_US.UTF-8 environment. That's
 # not always set correctly in CentOS 6.7
 #FIXME
-#export LC_ALL=en_US.UTF-8
-#export LANG=en_us.UTF-8
+export LC_ALL=en_US.UTF-8
+export LANG=en_us.UTF-8
 
 # Determine which architecture should be built
 if [[ "$(arch)" = "i686" || "$(arch)" = "x86_64" ]] ; then
@@ -57,7 +66,7 @@ fi
 #cd  /
 
 #FIXME
-export CMAKE_PREFIX_PATH=$QTDIR:$TOPDIR/app/share/llvm/:$TOPDIR/app/usr/lib/x86_64-linux-gnu/cmake/
+export CMAKE_PREFIX_PATH=$QT_CMAKE_DIR:$TOPDIR/app/share/llvm/:$TOPDIR/app/usr/lib/x86_64-linux-gnu/cmake/
 export CMAKE_MODULE_PATH=$TOPDIR/app/usr/lib/x86_64-linux-gnu/cmake/
 
 # if the library path doesn't point to our usr/lib, linking will be broken and we won't find all deps either
@@ -80,7 +89,7 @@ if [ ! -d "$TOPDIR/kdevplatform" ] ; then
 fi
 cd $TOPDIR/kdevplatform/
 git_pull_rebase_helper
-#git checkout assistantpopup-ng
+git checkout $KDEVELOP_VERSION
 
 # Get kdevelop
 if [ ! -d $TOPDIR/kdevelop ] ; then
@@ -88,15 +97,40 @@ if [ ! -d $TOPDIR/kdevelop ] ; then
 fi
 cd $TOPDIR/kdevelop
 git_pull_rebase_helper
-#git checkout assistantpopup-ng
+git checkout $KDEVELOP_VERSION
 
 # Get kdev-python
 if [ ! -d $TOPDIR/kdev-python ] ; then
-	git clone --depth 1 http://anongit.kde.org/kdev-python.git $TOPDIR/kdev-python
+    git clone --depth 1 http://anongit.kde.org/kdev-python.git $TOPDIR/kdev-python
 fi
-cd $TOPDIR/kdev-python
+cd $TOPDIR/kdev-python/
 git_pull_rebase_helper
+git checkout $KDEVELOP_VERSION
 
+# Get kdev-pg-qt
+if [ ! -d $TOPDIR/kdevelop-pg-qt ] ; then
+    git clone --depth 1 http://anongit.kde.org/kdevelop-pg-qt $TOPDIR/kdevelop-pg-qt
+fi
+cd $TOPDIR/kdevelop-pg-qt
+git_pull_rebase_helper
+git checkout $KDEV_PG_QT_VERSION
+
+# Get kdev-php
+if [ ! -d $TOPDIR/kdev-php ] ; then
+    git clone --depth 1 http://anongit.kde.org/kdev-php $TOPDIR/kdev-php
+fi
+cd $TOPDIR/kdev-php
+git_pull_rebase_helper
+git checkout $KDEVELOP_VERSION
+
+# Get Grantlee
+if [ ! -d $TOPDIR/grantlee ]; then
+    git clone --depth=1 https://github.com/steveire/grantlee.git
+fi
+cd $TOPDIR/grantlee
+git checkout master
+git_pull_rebase_helper
+git checkout $GRANTLEE_VERSION
 
 # Prepare the install location
 rm -rf $TOPDIR/app || true
@@ -133,11 +167,17 @@ function build_framework
         echo "$FRAMEWORK already cloned"
         cd $FRAMEWORK
         git reset --hard
+        git checkout master
         git pull --rebase
+        git fetch --tags
         cd ..
     else
         git clone git://anongit.kde.org/$FRAMEWORK
     fi
+
+    cd $FRAMEWORK
+    git checkout $KF5_VERSION || git checkout $KDE_APPLICATION_VERSION
+    cd ..
 
     if [ "$FRAMEWORK" = "knotifications" ]; then
 	cd $FRAMEWORK
@@ -188,12 +228,65 @@ EOF
     ninja install
 ) }
 
-for FRAMEWORK in extra-cmake-modules kconfig kguiaddons ki18n kitemviews sonnet kwindowsystem kwidgetsaddons kcompletion kdbusaddons karchive kcoreaddons kjobwidgets kcrash kservice kcodecs kauth kconfigwidgets kiconthemes ktextwidgets  kglobalaccel kxmlgui kbookmarks solid kio kparts kitemmodels threadweaver attica knewstuff ktexteditor kdoctools kpackage kdeclarative kcmutils knotifications knotifyconfig libkomparediff2 kinit ; do
-  build_framework $FRAMEWORK
-done
+build_framework extra-cmake-modules
+build_framework kconfig
+build_framework kguiaddons
+build_framework ki18n
+build_framework kitemviews
+build_framework sonnet
+build_framework kwindowsystem
+build_framework kwidgetsaddons
+build_framework kcompletion
+build_framework kdbusaddons
+build_framework karchive
+build_framework kcoreaddons
+build_framework kjobwidgets
+build_framework kcrash
+build_framework kservice
+build_framework kcodecs
+build_framework kauth
+build_framework kconfigwidgets
+build_framework kiconthemes
+build_framework ktextwidgets
+build_framework kglobalaccel
+build_framework kxmlgui
+build_framework kbookmarks
+build_framework solid
+build_framework kio
+build_framework kparts
+build_framework kitemmodels
+build_framework threadweaver
+build_framework attica
+build_framework knewstuff
+build_framework ktexteditor
+build_framework kpackage
+build_framework kdeclarative
+build_framework kcmutils
+build_framework knotifications
+build_framework knotifyconfig
+build_framework libkomparediff2
+build_framework kdoctools
 build_framework breeze-icons -DBINARY_ICONS_RESOURCE=1
+build_framework kpty
+build_framework kinit
+build_framework konsole
 
-cd ..
+cd $TOPDIR/grantlee
+mkdir -p build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$TOPDIR/app/usr/ $CMAKE_GENERATOR
+ninja
+ninja install
+
+# Build kdev-pg-qt
+mkdir -p $TOPDIR/kdevelop-pg-qt_build
+cd $TOPDIR/kdevelop-pg-qt_build
+cmake ../kdevelop-pg-qt \
+    -DCMAKE_INSTALL_PREFIX:PATH=$TOPDIR/app/usr \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    $CMAKE_GENERATOR
+ninja
+ninja install
 
 # Build KDevPlatform
 mkdir -p $TOPDIR/kdevplatform_build
@@ -201,7 +294,6 @@ cd $TOPDIR/kdevplatform_build
 cmake ../kdevplatform \
     -DCMAKE_INSTALL_PREFIX:PATH=$TOPDIR/app/usr/ \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    -DPACKAGERS_BUILD=1 \
     -DBUILD_TESTING=FALSE \
     $CMAKE_GENERATOR
 #make -j$PARALLEL_JOBS
@@ -217,7 +309,6 @@ cd $TOPDIR/kdevelop_build
 cmake ../kdevelop \
     -DCMAKE_INSTALL_PREFIX:PATH=$TOPDIR/app/usr/ \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    -DPACKAGERS_BUILD=1 \
     -DBUILD_TESTING=FALSE \
     $CMAKE_GENERATOR
 #make -j$PARALLEL_JOBS
@@ -227,8 +318,6 @@ ninja install
 rm -f $TOPDIR/kdevelop_build/KDevelopConfig.cmake
 
 # for python
-#FIXME
-#export PATH=/opt/python3.5/bin:$PATH
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TOPDIR/app/usr/lib/
 # Build kdev-python
 mkdir -p $TOPDIR/kdev-python_build
@@ -236,7 +325,6 @@ cd $TOPDIR/kdev-python_build
 cmake ../kdev-python \
     -DCMAKE_INSTALL_PREFIX:PATH=$TOPDIR/app/usr/ \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    -DPACKAGERS_BUILD=1 \
     -DBUILD_TESTING=FALSE \
     $CMAKE_GENERATOR
 #make -j$PARALLEL_JOBS
@@ -244,171 +332,14 @@ cmake ../kdev-python \
 ninja
 ninja install
 
+# Build kdev-php
+mkdir -p $TOPDIR/kdev-php_build
+cd $TOPDIR/kdev-php_build
+cmake ../kdev-php \
+    -DCMAKE_INSTALL_PREFIX:PATH=$TOPDIR/app/usr/ \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    $CMAKE_GENERATOR
+ninja
+ninja install
+
 exit 0
-
-###############################################################
-# Build complete, AppImage bundling begins here
-###############################################################
-
-cd /app
-
-# FIXME: How to find out which subset of plugins is really needed? I used strace when running the binary
-mkdir -p ./usr/lib/qt5/plugins/
-
-PLUGINS=$(dirname $QTDIR/plugins/bearer)
-
-cp -r $PLUGINS/{bearer,generic,imageformats,platforms,iconengines,platforminputcontexts,xcbglintegrations} ./usr/lib/qt5/plugins/
-# cp -r $PLUGINS/platformthemes ./usr/lib/qt5/plugins/
-
-cp -ru /usr/share/mime/* /app/usr/share/mime
-update-mime-database /app/usr/share/mime/
-
-mv ./usr/lib/plugins/* ./usr/lib/qt5/plugins/
-
-copy_deps
-mv usr/local/Qt-*/lib/* usr/lib
-rm -rf usr/local/
-mv lib64/* usr/lib/
-rm -rf lib64/
-mv ./opt/python3.5/lib/* usr/lib
-mv ./opt/llvm/lib/* usr/lib
-rm  -rf ./opt/
-rm -rf app/
-
-delete_blacklisted
-
-# We don't bundle the developer stuff
-rm -rf usr/include || true
-rm -rf usr/lib/cmake || true
-rm -rf usr/lib/pkgconfig || true
-rm -rf usr/share/ECM/ || true
-rm -rf usr/share/gettext || true
-rm -rf usr/share/pkgconfig || true
-rm -rf rm -rf ./usr/mkspecs/ || true
-find . -name '*.a' -exec rm {} \;
-
-strip -g $(find usr) || true
-
-mv usr/lib/libexec/kf5/* /app/usr/bin/
-
-cd /
-if [ ! -d appimage-exec-wrapper ]; then
-    git clone git://anongit.kde.org/scratch/brauch/appimage-exec-wrapper
-fi;
-cd /appimage-exec-wrapper/
-make clean
-make -j$PARALLEL_JOBS
-
-cd /app
-cp -v /appimage-exec-wrapper/exec.so exec_wrapper.so
-
-cat > AppRun << EOF
-#!/bin/bash
-
-DIR="\`dirname \"\$0\"\`"
-DIR="\`( cd \"\$DIR\" && pwd )\`"
-export APPDIR=\$DIR
-
-export LD_PRELOAD=\$DIR/exec_wrapper.so
-
-export APPIMAGE_ORIGINAL_QML2_IMPORT_PATH=\$QML2_IMPORT_PATH
-export APPIMAGE_ORIGINAL_LD_LIBRARY_PATH=\$LD_LIBRARY_PATH
-export APPIMAGE_ORIGINAL_QT_PLUGIN_PATH=\$QT_PLUGIN_PATH
-export APPIMAGE_ORIGINAL_XDG_DATA_DIRS=\$XDG_DATA_DIRS
-export APPIMAGE_ORIGINAL_PATH=\$PATH
-
-export QML2_IMPORT_PATH=\$DIR/usr/lib/qml:\$QML2_IMPORT_PATH
-export LD_LIBRARY_PATH=\$DIR/usr/lib/:\$LD_LIBRARY_PATH
-export QT_PLUGIN_PATH=\$DIR/usr/lib/qt5/plugins/
-export XDG_DATA_DIRS=\$DIR/usr/share/:\$XDG_DATA_DIRS
-export PATH=\$DIR/usr/bin:\$PATH
-export KDE_FORK_SLAVES=1
-
-export APPIMAGE_STARTUP_QML2_IMPORT_PATH=\$QML2_IMPORT_PATH
-export APPIMAGE_STARTUP_LD_LIBRARY_PATH=\$LD_LIBRARY_PATH
-export APPIMAGE_STARTUP_QT_PLUGIN_PATH=\$QT_PLUGIN_PATH
-export APPIMAGE_STARTUP_XDG_DATA_DIRS=\$XDG_DATA_DIRS
-export APPIMAGE_STARTUP_PATH=\$PATH
-
-kdevelop \$@
-EOF
-chmod +x AppRun
-
-cp ./usr/share/applications/org.kde.kdevelop.desktop kdevelop.desktop
-cp usr/share/icons/hicolor/256x256/apps/kdevelop.png .
-
-# What is this and why wasn't it installed automatically?
-mkdir -p usr/share/kdevelop/
-cp /kf5/build/breeze-icons/icons/breeze-icons.rcc usr/share/kdevelop/icontheme.rcc
-
-rm -Rf usr/share/icons # not needed because of the rcc
-rm -f /appusr/bin/llvm*
-rm -f usr/bin/clang*
-rm -f usr/bin/opt
-rm -f usr/bin/lli
-rm -f usr/bin/sancov
-rm -f usr/bin/cmake
-rm -f usr/bin/python
-rm -Rf usr/lib/pkgconfig
-rm -Rf usr/share/man
-rm -Rf usr/lib/python3.5/test
-rm -Rf usr/lib/python3.5/__pycache__
-rm -Rf usr/lib/libLTO.so
-rm -f /app/usr/bin/llc
-rm -f /app/usr/bin/bugpoint
-
-# rm -Rf usr/lib/libxcb* # Don't do this, because then it will no longer run on Arch
-
-# add that back in
-cp /usr/lib64/libxcb-keysyms.so.1 usr/lib/
-
-# TODO: Can we be sure about that? If yes, inform probono in order to add to the global blacklist
-# rm -Rf /app/usr/lib/{libX11.so.6,libXau.so.6,libXext.so.6,libXi.so.6,libXxf86vm.so.1,libX11-xcb.so.1,libXdamage.so.1,libXfixes.so.3,libXrender.so.1}
-
-APP=KDevelop
-LOWERAPP=kdevelop
-
-get_desktopintegration kdevelop
-
-cd  /
-
-# Build AppImageKit
-if [ ! -d AppImageKit ] ; then
-  git clone  --depth 1 https://github.com/probonopd/AppImageKit.git /AppImageKit
-fi
-
-cd /AppImageKit/
-git_pull_rebase_helper
-./build.sh
-
-cd /
-
-mkdir -p /$APP/$APP.AppDir
-cd /$APP/
-
-mv ../app/* $APP.AppDir/
-
-VERSION="git"
-ARCH=$(arch)
-
-mkdir -p /out
-rm -rf /out/*
-/AppImageKit/AppImageAssistant.AppDir/package KDevelop.AppDir/ /out/$APP-$VERSION-$ARCH.AppImage
-
-transfer ../out/* # Upload to transfer.io for testing
-
-# Try to power down Amazon AWS (no guarantees; need to check for yourself!)
-grep -r compute.internal /etc/resolv.conf && halt
-
-# Test the resulting AppImage on my local system
-# sudo /tmp/*/union/AppImageKit/AppImageAssistant.AppDir/testappimage /isodevice/boot/iso/Fedora-Live-Workstation-x86_64-22-3.iso /tmp/*/union/Scribus.AppDir/
-
-# Could not load plugin "KDevCMakeDocumentation" , it reported the error: "cmake is not installed" Disabling the plugin now.
-# QSqlDatabase: QSQLITE driver not loaded
-# QSqlDatabase: available drivers:
-# Couldn't setup QtHelp Collection file
-# qrc:/qml/main.qml:21:1: module "QtQuick" is not installed
-# welcomepage errors: (qrc:/qml/main.qml:21:1: module "QtQuick" is not installed)
-# trying to load "/tmp/.mount_YPZnl1/usr/lib/qt5/plugins/kf5/kio/file.so" from "/tmp/.mount_YPZnl1/usr/lib/qt5/plugins/kf5/kio/file.so"
-# called
-# updating problem highlight
