@@ -20,10 +20,13 @@ set -x
 
 git_pull_rebase_helper()
 {
+    #git fetch --tags
+    #git stash || true
+    #git pull --rebase
+    #git stash pop || true
+
     git fetch --tags
-    git stash || true
-    git pull --rebase
-    git stash pop || true
+    git reset --hard
 }
 
 export TOPDIR=$(pwd)
@@ -33,15 +36,15 @@ export CMAKE_GENERATOR=-GNinja
 
 KDEVELOP_VERSION=v5.0.3
 KDEV_PG_QT_VERSION=v2.0.0
-KF5_VERSION=v5.27.0
+KF5_VERSION=v5.28.0
 KDE_APPLICATION_VERSION=v16.08.0
 GRANTLEE_VERSION=v5.1.0
 
 # QT version to use
-QTDIR=~/Qt/5.7/gcc_64/
-QT_CMAKE_DIR=$QTDIR/lib/cmake/
-QT_QMAKE_CMD=$QTDIR/bin/qmake
-export QT_QMAKE_EXECUTABLE=QT_QMAKE_CMD
+#QTDIR=~/Qt/5.7/gcc_64/
+#QT_CMAKE_DIR=$QTDIR/lib/cmake/
+#QT_QMAKE_CMD=$QTDIR/bin/qmake
+#export QT_QMAKE_EXECUTABLE=QT_QMAKE_CMD
 
 # qjsonparser, used to add metadata to the plugins needs to work in a en_US.UTF-8 environment. That's
 # not always set correctly in CentOS 6.7
@@ -125,7 +128,7 @@ git checkout $KDEVELOP_VERSION
 
 # Get Grantlee
 if [ ! -d $TOPDIR/grantlee ]; then
-    git clone --depth=1 https://github.com/steveire/grantlee.git
+    git clone --depth=1 https://github.com/steveire/grantlee.git $TOPDIR/grantlee
 fi
 cd $TOPDIR/grantlee
 git checkout master
