@@ -1,0 +1,56 @@
+KDevelop super build system
+===========================
+
+The super build system builds a working KDevelop from source without knowledge of KDE internals.
+
+Going from zero to working installation:
+
+```shell
+git clone https://
+./build.py setup
+./build.py clone
+./build.py build
+./build.py run
+```
+
+## Motivation ##
+
+While KDevelop is super awesome, building it from source is quite a nightmare. Knowing which projects to build is just the beginning. The manuals and workflows seem overly complex and not suited to the beginner or even occasional patch job.
+
+Usage of this build system aims to ease the introduction to developing KDevelop.
+
+## Usage ##
+
+`build.py` is the entry-point to all commands. Running without arguments produces a list of all available commands.
+`build.py` relies on configuration supplied in `kdevsuperbuild.conf` which can be created interactively by `build.py setup`.
+
+### setup command ###
+
+Setup asks a few questions about the build process and creates `kdevsuperbuild.conf` which is read by `build.py`.
+
+### clone command ###
+
+Clone copies for each new project the latest changes from project repositories to the local disk. Every project that has already been cloned will not be cloned again.
+
+### update command ###
+
+Update stashes local changes and fetches and applies the latest changes (exact commit / branch defined by the build script) to the local work tree.
+
+### clean command ###
+
+Clean removes directories of already built projects.
+
+### build command ###
+
+Build clones and builds projects. When called with no arguments, all projects will be built. If only a subset is to be built, their names must be supplied as arguments.
+
+### run command ###
+
+Run executes the current build of KDevelop.
+
+### shell command ###
+
+Shell drops the user to a new shell instance where all needed environment variables have been set like the build tool would use.
+In case of errors, shell is useful to investigate the situation, apply changes and build under full control.
+
+## Configuration file format ##
