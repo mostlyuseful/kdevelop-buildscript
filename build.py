@@ -107,11 +107,47 @@ class Project(object):
             click.echo('Repository {} already cleaned to {}'.format(self.repository, self.repo_dir))
 
 
-class FrameworkProject(Project):
+class CMakeProject(Project):
+    def __init__(self, name, repository, repo_dir, build_dir, cmake_options=None, extra_cmake_options=None):
+        super(CMakeProject, self).__init__(name, repository, repo_dir, build_dir)
+        if cmake_options is None:
+            self.cmake_options = Options.default_cmake_options + [
+                '-DCMAKE_INSTALL_PREFIX:PATH={}'.format(self.install_dir)]
+        else:
+            self.cmake_options = cmake_options
+
+        if extra_cmake_options is not None:
+            self.cmake_options += extra_cmake_options
+
+    def generate(self):
+        click.echo('Generating {}'.format(self.build_dir))
+        if not self.build_dir.exists():
+            self.build_dir.mkdir(parents=True)
+        with local.cwd(self.build_dir):
+            options = [self.repo_dir] + self.cmake_options
+            cmd = local['cmake'][options]
+            return check_call(cmd)
+
+    def build(self):
+        click.echo('Building {}'.format(self.build_dir))
+        with local.cwd(self.build_dir):
+            cmd = local['make']['-j{}'.format(Options.num_paralleljobs)]
+            return check_call(cmd)
+
+    def install(self):
+        click.echo('Installing {}'.format(self.build_dir))
+        with local.cwd(self.build_dir):
+            cmd = local['make']['-j{}'.format(Options.num_paralleljobs), 'install']
+            return check_call(cmd)
+
+
+class FrameworkProject(CMakeProject):
     def __init__(self, name, version='master', cmake_options=None, extra_cmake_options=None):
-        Project.__init__(self, name, GitRepository('http://anongit.kde.org/{}.git'.format(name)),
-                         Options.repodir / name,
-                         Options.builddir / name)
+        super(FrameworkProject, self).__init__(name, GitRepository('http://anongit.kde.org/{}.git'.format(name)),
+                                               Options.repodir / name,
+                                               Options.builddir / name,
+                                               cmake_options,
+                                               extra_cmake_options)
         self.version = version
 
         if cmake_options is None:
@@ -123,34 +159,14 @@ class FrameworkProject(Project):
         if extra_cmake_options is not None:
             self.cmake_options += extra_cmake_options
 
-    def generate(self):
 
-        click.echo('Generating {}'.format(self.build_dir))
-
-        if not self.build_dir.exists():
-            self.build_dir.mkdir(parents=True)
-
-        with local.cwd(self.build_dir):
-            options = [self.repo_dir] + self.cmake_options
-            cmd = local['cmake'][options]
-            # check_call(local['env']|local['sort']); 1/0
-            return check_call(cmd)
-
-    def build(self):
-
-        click.echo('Building {}'.format(self.build_dir))
-
-        with local.cwd(self.build_dir):
-            cmd = local['make']['-j{}'.format(Options.num_paralleljobs)]
-            return check_call(cmd)
-
-    def install(self):
-
-        click.echo('Installing {}'.format(self.build_dir))
-
-        with local.cwd(self.build_dir):
-            cmd = local['make']['-j{}'.format(Options.num_paralleljobs), 'install']
-            return check_call(cmd)
+class Grantlee(CMakeProject):
+    def __init__(self):
+        name = 'grantlee'
+        super(Grantlee, self).__init__(name,
+                                       GitRepository('https://github.com/steveire/grantlee.git'),
+                                       Options.repodir / name,
+                                       Options.builddir / name)
 
 
 PROJECTS = [
@@ -197,11 +213,9 @@ PROJECTS = [
     FrameworkProject('kpty'),
     FrameworkProject('kinit'),
     FrameworkProject('konsole'),
-    # FrameworkProject('kdevplatform'),
     FrameworkProject('kdevelop'),
     FrameworkProject('kdev-python'),
-    Project('grantlee', GitRepository('https://github.com/steveire/grantlee.git'), Options.repodir / 'grantlee',
-            Options.builddir / 'grantlee')
+    Grantlee()
 ]
 
 
@@ -258,14 +272,15 @@ def shell():
 
 @click.command()
 def run():
-    local.env['QML2_IMPORT_PATH'] = str(Options.installdir / 'lib' / 'x86_64-linux-gnu' / 'qml') +':'+ \
+    local.env['QML2_IMPORT_PATH'] = str(Options.installdir / 'lib' / 'x86_64-linux-gnu' / 'qml') + ':' + \
                                     local.env.get('QML2_IMPORT_PATH', '')
-    local.env['LD_LIBRARY_PATH']= str(Options.installdir / 'lib' / 'x86_64-linux-gnu') +':'+ local.env.get('LD_LIBRARY_PATH')
-    local.env['QT_PLUGIN_PATH'] = str(Options.installdir / 'lib' / 'x86_64-linux-gnu'/'plugins')
-    local.env['XDG_DATA_DIRS'] = str(Options.installdir /'share')+':'+ local.env.get('XDG_DATA_DIRS','')
+    local.env['LD_LIBRARY_PATH'] = str(Options.installdir / 'lib' / 'x86_64-linux-gnu') + ':' + local.env.get(
+        'LD_LIBRARY_PATH')
+    local.env['QT_PLUGIN_PATH'] = str(Options.installdir / 'lib' / 'x86_64-linux-gnu' / 'plugins')
+    local.env['XDG_DATA_DIRS'] = str(Options.installdir / 'share') + ':' + local.env.get('XDG_DATA_DIRS', '')
     local.env['PATH'] = str(Options.installdir / 'bin') + ':' + local.env.get('PATH', '')
-    local.env['KDE_FORK_SLAVES']='1'
-    cmd = local[str(Options.installdir/'bin'/'kdevelop')]
+    local.env['KDE_FORK_SLAVES'] = '1'
+    cmd = local[str(Options.installdir / 'bin' / 'kdevelop')]
     return check_call(cmd)
 
 
